@@ -1,0 +1,474 @@
+<html>
+
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js"> </script>
+
+    <!-- Vuetify -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@4.x/css/materialdesignicons.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+
+    <style>
+        .item {
+            float: left;
+            position: relative;
+        }
+
+        .item .overlay {
+            position: absolute;
+            top: 0;
+            left: 5px;
+            font-size: 0.8rem;
+        }
+
+        .row {
+            border-bottom: 3px solid #fff;
+            clear: both;
+        }
+
+        .configure {
+            padding: 1rem;
+        }
+
+        .expand {
+            cursor: pointer;
+        }
+
+        .results {
+            padding: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <v-app>
+            <v-main>
+                <v-container>
+                    <div class="configure">
+                        <v-card elevation="2">
+                            <v-card-title>Gerador para o Problema do Empacotamento </v-card-title>
+                            <v-card-text>
+                                <label> Quantidade de Itens: <input type="number"
+                                        v-model.number="quantity" /></label><br />
+                                <label> Semente: <input type="number" v-model.number="seed" /></label> <br />
+                                Algoritmo:
+                                <input type="radio" id="firstFit" value="firstFit" v-model="algorithm">
+                                <label for="firstFit">FirstFit</label>&nbsp;
+                                <input type="radio" id="firstFitDecreasing" value="firstFitDecreasing"
+                                    v-model="algorithm">
+                                <label for="firstFitDecreasing">FirstFit Decreasing</label>
+                                <br /><br />
+                                <v-btn v-on:click="visualizeProblemInstance({seed, quantity, algorithm})"> Gerar
+                                    Problema
+                                </v-btn>
+                            </v-card-text>
+                        </v-card>
+                        <br />
+                        <v-card elevation="2">
+                            <v-card-title> Resultados </v-card-title>
+                            <v-card-text>
+                                <span> * As porcentagens se referem ao tamanho de um grupo. </span><br />
+                                <span>Lower Bound (Teórico): {{lowerBound}}</span><br />
+                                <span> Soma dos valores gerados:</span><span class="text--primary"> {{sumOfValues +
+                                    "%"}}</span><br />
+                                <span> Grupos Totalmente utilizados:</span><span class="text--primary">
+                                    ({{totallyFilled.length}})</span> <span class="expand"
+                                    v-on:click="showTotallyFilled = !showTotallyFilled">{{showTotallyFilled ? '−' : '+'
+                                    }}</span>
+                                <span> {{showTotallyFilled ? totallyFilled : null}}</span> <br />
+                                <span> Espaço inicial disponível: </span><span class="text--primary">
+                                    {{groups.filter(g => g.length > 0).length * 100 }}%
+                                </span> <br />
+                                <span> Grupos Parcialmente utilizados: </span><span class="text--primary">
+                                    {{groups.filter(g => g.length > 0).length - totallyFilled.length }} </span> <br />
+                                <br />
+
+                                <span> Total de grupos utilizados: </span><span class="text--primary">
+                                    {{groups.filter(g => g.length > 0).length}}</span><br />
+                                <span> Espaço final não aproveitado: </span><span class="text--primary">{{
+                                    groups.filter(g => g.length > 0).length * 100 -
+                                    sumOfValues}}% </span> <br />
+                            </v-card-text>
+                        </v-card>
+                        <br />
+                        <v-card elevation="2">
+                            <v-card-title>Visualização&nbsp; <input type="checkbox" v-model="showVisualization" />
+                            </v-card-title>
+                            <v-card-text v-if="showVisualization">
+                                <label> Distinguir Itens: <input type="checkbox" v-model="colorItems" /></label><br />
+                                <label> Mostrar ID e comprimento: <input type="checkbox"
+                                        v-model="showItemDetails" /></label><br />
+                            </v-card-text>
+
+                            <div class="results" v-if="showVisualization">
+                                <div v-for="row in groups.filter(g => g.length > 0)" class="row">
+                                    <div v-for="item in row" class="item"
+                                        v-bind:style="{ background: getColor(item.id, colorItems), ...dimensionStyle(item), ...otherDimensionStyle()}">
+                                        <span v-if="showItemDetails" class="overlay"> {{item.id}} ({{item.value +
+                                            "%"}})</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </v-card>
+                        <br />
+                        <v-card elevation="2">
+                            <v-card-title>Comparação
+                            </v-card-title>
+                            <v-card-text>
+                                <label> Semente Inicial: <input :disabled="isGenerating" type="number"
+                                        v-model.number="fromSeed" /></label><br />
+                                <label> Semente Final: <input :disabled="isGenerating" type="number"
+                                        v-model.number="toSeed" /></label><br />
+                                <label> Quantidade Inicial: <input :disabled="isGenerating" type="number"
+                                        v-model.number="minQuantity" /></label><br />
+                                <label> Quantidade Final: <input :disabled="isGenerating" type="number"
+                                        v-model.number="maxQuantity" /></label><br />
+                                <v-btn :disabled="isGenerating"
+                                    v-on:click="startWorker({ fromSeed, toSeed, minQuantity, maxQuantity })">
+                                    Gerar Comparação
+                                </v-btn><br /><br />
+                                <span> Última quantidade analisada: {{latestPlotItem}}</span> <br /><br />
+
+                            </v-card-text>
+
+                            <Plotly :data="singleSeedPlot.data" :layout="singleSeedPlot.layout"
+                                :display-mode-bar="false"></Plotly>                            
+
+                            <Plotly :data="plot.data" :layout="plot.layout" :display-mode-bar="false"></Plotly>
+
+                        </v-card>
+
+                    </div>
+
+                </v-container>
+            </v-main>
+        </v-app>
+    </div>
+
+    <script>
+        let initialQuantity = 60;
+        let divisions = 35;
+        let COL = Symbol('col');
+        let ROW = Symbol('row');
+        let direction = ROW;
+        let viewHeight = window.innerHeight;
+        let viewWidth = window.innerWidth;
+        let otherDimension = 30;
+        let MAX_COLORS = 100;
+        let COLORS_SEED = 'colors_seed';
+        let rngColor = new Math.seedrandom(COLORS_SEED);
+        let randomColor = rngColor;
+        let colors = Array.from(Array(MAX_COLORS).keys()).map(i => getRandomColor(true));
+        // Source: https://stackoverflow.com/questions/1484506/random-color-generator        
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF';
+            var color = '#';
+            for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(randomColor() * 16)];
+            }
+            return color;
+        }
+        function getColor(index, colorItems) {
+            if (!colorItems) {
+                return '#000000';
+            }
+            return colors[index % MAX_COLORS];
+        }
+
+        let dimensionStyle = (item) => direction === ROW ? { width: `${item.value}%` } : { height: `${item.value}%` }
+        let otherDimensionStyle = () => direction === ROW ? { height: `${otherDimension}px` } : { width: `${otherDimension}px` }
+
+        const visualizeProblemInstance = ({ seed, quantity, algorithm }) => {
+
+            const problem = generateProblemInstance({ seed, quantity, algorithm });
+
+            app.quantity = problem.quantity;
+            app.images = problem.images;
+            app.groups = problem.groups;
+            app.sumOfValues = problem.sumOfValues;
+            app.totallyFilled = problem.totallyFilled;
+            app.lowerBound = problem.lowerBound;
+        }
+
+    </script>
+    <script id="shared-script">
+        let maximumValue = 100;
+        /* Generate predictable yet random results with a seed */
+        function generateProblemInstance({ seed, quantity, algorithm }) {
+            let rng = new Math.seedrandom(seed);
+            let random = rng;
+
+            let images = Array.from(Array(quantity).keys()).map(k => ({ id: k, value: Math.floor(random() * maximumValue) }));
+
+            /* Bin Packing will try to assign values to each of the groups */
+            let groups = images.map((i) => ([]));
+            let sumOfValues = images.reduce((acc, v) => acc + v.value, 0);
+            let lowerBound = Math.ceil(sumOfValues / maximumValue);
+            // console.log({ lowerBound, sumOfValues, maximumValue, groups, images })
+
+            let binPacking = (groups, images, algorithm) => {
+                switch (algorithm) {
+                    case 'firstFit':
+                        return firstFit(groups, images);
+                    case 'firstFitDecreasing':
+                        return firstFitDecreasing(groups, images);
+                }
+            }
+
+            binPacking(groups, images, algorithm);
+
+            let totallyFilled = groups
+                .map((g, index) => ({ g, index }))
+                .filter(({ g, index }) => g.length > 0 && g.reduce((acc, i) => i.value + acc, 0) === 100)
+                .map(({ g, index }) => index)
+            // console.log({ totallyFilled })
+
+            return {
+                quantity,
+                images,
+                groups,
+                lowerBound,
+                sumOfValues,
+                maximumValue,
+                totallyFilled
+            }
+
+        }
+
+        function firstFit(groups, images) {
+            let groupsSum = new Map(images.map((i) => ([i.id, 0])));
+            for (let item of images) {
+                for (let g = 0; g < groups.length; g++) {
+                    let groupSum = groupsSum.get(g);
+                    if (groupSum + item.value <= maximumValue) {
+                        groupsSum.set(g, groupSum + item.value);
+                        groups[g].push(item);
+                        break;
+                    }
+                }
+            }
+        }
+
+        function firstFitDecreasing(groups, images) {
+            let groupsSum = new Map(images.map((i) => ([i.id, 0])));
+            for (let item of images.sort((a, b) => -(a.value - b.value))) {
+                for (let g = 0; g < groups.length; g++) {
+                    let groupSum = groupsSum.get(g);
+                    if (groupSum + item.value <= maximumValue) {
+                        groupsSum.set(g, groupSum + item.value);
+                        groups[g].push(item);
+                        break;
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://cdn.plot.ly/plotly-2.2.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue-plotly@1.1.0/dist/vue-plotly.umd.js"></script>
+    <script>
+
+        function startWorker(payload) {
+            worker.postMessage(JSON.stringify(payload)); // Start the worker.     
+            app.isGenerating = true;
+        }
+
+        let app = new Vue({
+            el: '#app',
+            vuetify: new Vuetify(),
+            data: {
+                /* These are set initially */
+                direction: direction,
+                maximumValue: maximumValue,
+                otherDimension: otherDimension,
+
+                quantity: initialQuantity,
+                images: [],
+                groups: [],
+                colorItems: true,
+                showItemDetails: true,
+                seed: 1,
+                showVisualization: true,
+
+                sumOfValues: 0,
+                totallyFilled: [],
+                showTotallyFilled: false,
+                lowerBound: 0,
+
+                algorithm: 'firstFit',
+
+                plot: {
+                    data: [
+                        { x: [], y: [], z: [], size: 1, mode: 'markers', type: 'scatter3d', name: 'FirstFit / Qtd' },
+                        { x: [], y: [], z: [], size: 1, mode: 'markers', type: 'scatter3d', name: 'FirstFitDecreasing / Qtd' },
+                        { x: [], y: [], z: [], size: 1, mode: 'markers', type: 'scatter3d', name: 'LowerBound / Qtd' },
+                        { x: [], y: [], z: [], size: 1, mode: 'markers', type: 'scatter3d', name: 'FirstFit - FirstFitDecreasing', visible: 'legendonly' }
+                    ],
+                    layout: {
+                        title: {
+                            text: 'Número de Grupos / Quantidade de Itens (Menor é melhor)'
+                        }
+                    }
+                },
+
+                singleSeedPlot: {
+                    data: [
+                        { x: [], y: [], size: 1, mode: 'markers', type: 'scatter', name: 'FirstFit / Qtd' },
+                        { x: [], y: [], size: 1, mode: 'markers', type: 'scatter', name: 'FirstFitDecreasing / Qtd' },
+                        { x: [], y: [], size: 1, mode: 'markers', type: 'scatter', name: 'LowerBound / Qtd' },
+                        { x: [], y: [], size: 1, mode: 'markers', type: 'scatter', name: 'FirstFit - FirstFitDecreasing', visible: 'legendonly' }
+                    ],
+                    layout: {
+                        title: {
+                            text: 'Número de Grupos / Quantidade de Itens (Menor é melhor, Apenas 1 Semente)'
+                        }
+                    }
+                },
+
+                latestPlotItem: 0,
+                isGenerating: false,
+                minQuantity: 1,
+                maxQuantity: 50,
+                fromSeed: 1,
+                toSeed: 1
+            },
+            methods: {
+                getColor: getColor,
+                otherDimensionStyle: otherDimensionStyle,
+                dimensionStyle: dimensionStyle,
+                visualizeProblemInstance: visualizeProblemInstance,
+                generateProblemInstance: generateProblemInstance,
+                startWorker: startWorker
+            },
+            components: {
+                Plotly: window['vue-plotly'].Plotly
+            }
+        })
+    </script>
+
+    <script id="worker1" type="javascript/worker">
+    // This script won't be parsed by JS engines because its type is javascript/worker.
+    self.importScripts('https://cdnjs.cloudflare.com/ajax/libs/seedrandom/3.0.5/seedrandom.min.js');
+
+    self.onmessage = function(e) {
+        let {fromSeed, toSeed, maxQuantity, minQuantity} = JSON.parse(e.data);
+        let seed = fromSeed;
+        let algorithm = 'firstFit';
+        let quantity = minQuantity;
+        while (quantity <= maxQuantity) {
+            while (seed <= toSeed) {
+                let resultFirstFit = generateProblemInstance({quantity: quantity, seed: seed, algorithm: 'firstFit'});
+                let resultFirstFitDecreasing = generateProblemInstance({quantity: quantity, seed: seed, algorithm: 'firstFitDecreasing'});
+                let r = {
+                    firstFit: {
+                        groupsLength: resultFirstFit.groups.filter(g => g.length > 0).length,
+                        sumOfValues: resultFirstFit.sumOfValues
+                    },
+                    firstFitDecreasing: {
+                        groupsLength: resultFirstFitDecreasing.groups.filter(g => g.length > 0).length,
+                        sumOfValues: resultFirstFitDecreasing.sumOfValues
+                    },                    
+                    lowerBound: resultFirstFit.lowerBound,
+                    quantity: resultFirstFit.quantity,
+                    seed
+                }     
+                seed++;
+                self.postMessage(JSON.stringify(r));
+            }
+            quantity++;
+            seed = fromSeed;
+        }
+
+    };
+
+    </script>
+    <script>
+        var blob = new Blob([
+            document.querySelector('#worker1').textContent,
+            document.querySelector('#shared-script').textContent
+        ], { type: "text/javascript" })
+
+        // Note: window.webkitURL.createObjectURL() in Chrome 10+.
+        var worker = new Worker(window.URL.createObjectURL(blob));
+        worker.onmessage = function (e) {
+            let response = JSON.parse(e.data);
+            console.log(response)
+
+            app.plot.data = [...app.plot.data.map((i, index) => {
+                let z = 0;
+                switch (index) {
+                    case 0:
+                        z = response.firstFit.groupsLength / response.quantity;
+                        break;
+                    case 1:
+                        z = response.firstFitDecreasing.groupsLength / response.quantity;
+                        break;
+                    case 2:
+                        z = response.lowerBound / response.quantity;
+                        break;
+                    case 3:
+                        z = (response.firstFit.groupsLength - response.firstFitDecreasing.groupsLength);
+                        break;
+                }
+                return {
+                    ...i,
+                    x: [
+                        ...i.x.slice(),
+                        response.quantity
+                    ],
+                    y: [
+                        ...i.y.slice(),
+                        response.seed
+                    ],
+                    z: [
+                        ...i.z.slice(),
+                        z
+                    ]
+                }
+            }
+            )]
+
+            if (response.seed === app.fromSeed) {
+                app.singleSeedPlot.data = [...app.singleSeedPlot.data.map((i, index) => {
+                    let z = 0;
+                    switch (index) {
+                        case 0:
+                            z = response.firstFit.groupsLength / response.quantity;
+                            break;
+                        case 1:
+                            z = response.firstFitDecreasing.groupsLength / response.quantity;
+                            break;
+                        case 2:
+                            z = response.lowerBound / response.quantity;
+                            break;
+                        case 3:
+                            z = (response.firstFit.groupsLength - response.firstFitDecreasing.groupsLength);
+                            break;
+                    }
+                    return {
+                        ...i,
+                        x: [
+                            ...i.x.slice(),
+                            response.quantity
+                        ],
+                        y: [
+                            ...i.y.slice(),
+                            z
+                        ]
+                    }
+                }
+                )]
+            }
+
+            app.latestPlotItem = response.quantity;
+        }
+    </script>
+
+
+</body>
+
+</html>
