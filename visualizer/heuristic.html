@@ -1,0 +1,158 @@
+<html>
+
+<head>
+    <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+    <script src="https://unpkg.com/dagre@0.7.4/dist/dagre.js"></script>
+    <script src="https://cytoscape.org/cytoscape.js-dagre/cytoscape-dagre.js"></script>
+    <script src="https://unpkg.com/@stackomate/data-structures@1.1.0/dist/data-structures.umd.js"></script>
+
+    <script>
+        const queryString = window.location.search;
+        const urlParams = new URLSearchParams(queryString);
+
+        var script = document.createElement('script');
+        script.onload = function () {
+            setupVue();            
+        };
+        let algorithmType = urlParams.get('algorithmType') || 'greedy-heuristic';
+        document.title = algorithmType;
+        script.src = `../output/${algorithmType}-output.js`;
+
+        document.head.appendChild(script); //or something of the likes        
+    </script>
+
+    <script src="https://unpkg.com/popper.js@1.14.7/dist/umd/popper.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-popper@1.0.4/cytoscape-popper.min.js"></script>
+    <script src="https://unpkg.com/tippy.js@4.0.1/umd/index.all.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@4.0.1/index.css" />
+    <style>
+        body {
+            font-family: helvetica;
+            font-size: 14px;
+        }
+
+        #cy {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            left: 0;
+            top: 0;
+            z-index: 999;
+        }
+
+        h1 {
+            opacity: 0.5;
+            font-size: 1em;
+        }
+
+        #summary {
+            width: 300px;
+            background: rgba(150, 150, 250, 0.5);
+            z-index: 100000;
+            padding: 1rem;
+            border-radius: 5px;
+            position: relative;
+            max-height: 500px;
+            overflow: auto;
+        }
+    </style>
+    <script>
+        const setupVue = () => {
+        const colors = ["lightpink","mediumslateblue","darkolivegreen","slategray","cyan","midnightblue","darkkhaki","chocolate","fuchsia","mediumblue","ghostwhite","deepskyblue","darkorange","magenta","seagreen","lightsteelblue","navy","darkseagreen","lightgray","coral","slategrey","blueviolet","goldenrod","skyblue","antiquewhite","brown","aquamarine","crimson","yellow","bisque","lightgrey","lightcyan","palevioletred","aqua","lightskyblue","darkgoldenrod","darksalmon","thistle","burlywood","darkred","peachpuff","darkturquoise","darkslategray","chartreuse","sienna","mediumpurple","palegoldenrod","white","steelblue","olivedrab","black","mediumturquoise","hotpink","deeppink","navajowhite","darkmagenta","darkslateblue","gray","seashell","firebrick","orangered","paleturquoise","tan","darkgreen","indianred","red","darkorchid","azure","olive","lightyellow","lightgreen","maroon","darkgray","sandybrown","royalblue","lightsalmon","plum","darkviolet","springgreen","lime","ivory","lightseagreen","lightslategrey","violet","purple","darkgrey","mediumaquamarine","greenyellow","salmon","limegreen","wheat","forestgreen","palegreen","gainsboro","whitesmoke","green","silver","moccasin","lightslategray","mediumspringgreen","orange","mistyrose","mintcream","darkblue","darkcyan","peru","beige","grey","lavender","saddlebrown","mediumvioletred","lavenderblush","papayawhip","blanchedalmond","honeydew","pink","lemonchiffon","orchid","lawngreen","darkslategrey","dodgerblue","indigo","lightgoldenrodyellow","khaki","cornflowerblue","cornsilk","dimgrey","lightcoral","lightblue","teal","gold","tomato","blue","dimgray","mediumorchid","floralwhite","cadetblue","snow","rosybrown","oldlace","powderblue","mediumseagreen","linen","slateblue","turquoise","aliceblue","yellowgreen"]
+        const correspondency = {}
+
+        let constraintsResult = [];
+        Object.keys(dataResult.adjList).forEach((key, arr) => {
+            constraintsResult.push(
+                {
+                    "data": {
+                        "id": key,
+                        "label": Number(key),
+                        "type": "variable",
+                        "color": dataResult.colors[key]
+                    },
+                    "classes": "item"
+                },
+            )
+        })
+
+        let r = dataResult.adjList;
+        r.forEach((arr, k) => {
+            arr.forEach(v => {
+                /* Only show each edge once */
+                if (k > v) {
+                    constraintsResult.push(
+                        {
+                            "data": {
+                                "source": k,
+                                "target": v
+                            }
+                        },
+                    )
+                }
+
+            })
+
+        })
+
+            const queryString = window.location.search;
+            const urlParams = new URLSearchParams(queryString);
+
+            var cy = window.cy = cytoscape({
+                container: document.getElementById('cy'),
+
+                boxSelectionEnabled: false,
+                autounselectify: true,
+
+                layout: {
+                    name: 'cose',
+                    nodeRepulsion: function (node) { return 1600999; },
+                },
+
+                style: [
+
+                    {
+                        selector: 'node',
+                        style: {
+                            'label': 'data(label)',
+                        }
+                    },
+
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 4,
+                            'line-color': '#9dbaea',
+                            'target-arrow-color': '#9dbaea',
+                            'curve-style': 'bezier'
+                        }
+                    },
+
+                    {
+                        selector: '.item',
+                        style: {
+                            'background-color': (item) => {
+                                return colors[item.data('color')]
+                            }
+                        }
+                    }
+                ],
+
+                elements: constraintsResult.map(i => {
+                    return {
+                        ...i,
+                        data: {
+                            ...i.data
+                        }
+                    }
+                })
+            });
+    }
+    </script>
+</head>
+
+<body>
+    <div id="cy"></div>
+</body>
+
+</html>

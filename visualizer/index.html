@@ -1,0 +1,271 @@
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+        <!-- <script src="../output/greedy-backtracking-output.js"></script> -->
+
+        <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+        <script src="https://unpkg.com/dagre@0.7.4/dist/dagre.js"></script>
+        <script src="https://cytoscape.org/cytoscape.js-dagre/cytoscape-dagre.js"></script>
+        <script src="https://unpkg.com/popper.js@1.14.7/dist/umd/popper.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/cytoscape-popper@1.0.4/cytoscape-popper.min.js"></script>
+        <script src="https://unpkg.com/tippy.js@4.0.1/umd/index.all.min.js"></script>
+        <link rel="stylesheet" href="https://unpkg.com/tippy.js@4.0.1/index.css" />  
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/meyer-reset/2.0/reset.min.css" />  
+        
+        <!-- Vuetify -->
+        <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/@mdi/font@4.x/css/materialdesignicons.min.css" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+
+        <link href="./styles.css" rel="stylesheet">
+        <script src="./graph-viz.js"></script>        
+
+    </head>
+    <body>
+        <div id="app">
+            <v-app>
+                <v-navigation-drawer app v-bind:width="400">
+                    <div class="left-menu">
+                        <v-container>
+                            <v-card
+                            elevation="2"
+                            >
+                                <v-card-title>Info</v-card-title>
+                                <v-card-text>
+                                    <div>
+                                        File name: <strong>"{{graphFileName}}"</strong>
+                                    </div>
+                                    <div>
+                                        Algorithm: <strong>{{algorithmType}}</strong>
+                                    </div>
+                                    <div>                                        
+                                        Vertex Count: <strong>{{nVertices}}</strong>
+                                    </div>
+                                    <div>    
+                                        Edge Count: <strong>{{nArestas}}</strong>
+                                    </div>
+                                    <div>
+                                        Maximum Degree: <strong>{{grauMaximo}}</strong>
+                                    </div>
+                                    <div>    
+                                        Minimum Degree: <strong>{{grauMinimo}}</strong>
+                                    </div>                                    
+                                    <div>    
+                                        Density (simple graph): <strong>{{(2 * nArestas / (nVertices * (nVertices - 1))).toFixed(4)}}</strong>
+                                    </div>                                    
+                                </v-card-text>         
+                            </v-card>
+                        </v-container>
+
+                        <v-container>
+                            <v-card
+                            elevation="2"
+                            >
+                                <v-card-title>Adjacency List: <v-checkbox v-model="showAdjacencyList"> </v-checkbox></v-card-title>
+                                <v-card-text v-if="showAdjacencyList">
+                                    <div v-for="(item, index) in adjList">
+                                        {{index}} : {{item}}
+                                    </div>
+                                </v-card-text>         
+                            </v-card>
+                        </v-container>
+
+                        <v-container>                    
+                            <v-card
+                            elevation="2"
+                            >
+                            <v-card-title>Chromatic Number: {{numeroCromatico}}</v-card-title>   
+                            </v-card>     
+                        </v-container>   
+
+                        <v-container>                    
+                            <v-card
+                            elevation="2"
+                            >
+                            <v-card-title>Valid Colorings Found</v-card-title>
+                            <v-card-text>
+                                    <div v-for="(coloracao, index) in coloracoesOtimas" class="step" v-on:click="applyAction(getStep(coloracao))">
+                                    {{coloracao}} ({{numerosCromaticos[index]}} colors<strong v-if="isOptimal(coloracao)">, optimal</strong>)
+                                    </div>
+                                </v-card-text>         
+                            </v-card>     
+                        </v-container>                           
+
+                    <v-container>                    
+                        <v-card
+                        elevation="2"
+                        >
+                            <v-card-title>Render Backtracking Tree: <v-checkbox v-model="renderBacktracking"> </v-checkbox></v-card-title>   
+                            <v-card-text>
+                            <div v-if="renderBacktracking">
+                                <v-checkbox v-bind:disabled="timer !== 0" v-model="backtrackingWithRequestAnimationFrame" label="Asynchronous Layout Rendering"> </v-checkbox> 
+                                <span></span>
+                            </div>
+                            <div>Vertices in the Backtracking Tree: {{backtrackingVerticesCount}}</div>
+                            <div>Edges in the Backtracking Tree: {{backtrackingEdgesCount}}</div>
+                        </v-card-text>          
+                        </v-card>     
+                    </v-container>     
+
+                    <v-container>
+                        <v-card
+                        elevation="2"
+                        >
+                            <v-card-title>Algorithm Execution:</v-card-title>
+                            <v-card-text>
+                                <div>Current Step: <strong>{{currentStep + 1}}</strong></div>
+                                <div>Final Step: <strong class="clickable" v-on:click="applyAction(logs.length - 1)">{{logs.length - 1}}</strong></div>
+                                <div style="display:flex; flex-direction: row">
+                                <v-icon v-on:click="applyAction(currentStep - 1)">mdi-skip-previous</v-icon>
+                                <v-icon v-on:click="applyAction(currentStep + 1)">mdi-skip-next</v-icon>
+                            </div>
+                            Operations:
+                            <div style="display:flex; flex-direction: row">
+                                <v-slider
+                                :value="currentStep"
+                                thumb-label
+                                v-bind:max="logs.length - 1"
+                                min="-1"
+                                v-on:change="applyAction($event)"
+                                ></v-slider>
+                            </div>
+                            Speed (Operations/s):                            
+                            <div style="display:flex; flex-direction: row">
+                            <v-slider
+                            v-model="timer"
+                            thumb-label
+                            v-bind:max="maxOps"
+                            min="0"
+                            ></v-slider>
+                            </div>
+                            Maximum Speed (Operations/s):
+                            <div style="display:flex; flex-direction: row">
+                            <v-text-field
+                                v-model="maxOps"
+                                hide-details
+                                single-line
+                                type="number"
+                            />
+                            </div>       
+                            <div>Real Speed: {{playbackSpeed.toFixed(2)}}</div>                   
+                            </v-card-text>         
+                        </v-card>
+                    </v-container>               
+
+                    <v-container>        
+                        <v-card
+                        elevation="2"
+                        >             
+                            <v-card-title>Logs: <v-checkbox v-model="showLogs"> </v-checkbox></v-card-title> 
+                            <v-card-text>List is dynamically loaded to avoid performance issues</v-card-text>
+                            <div v-if="showLogs"
+                            id="logs-list"
+                            class="scrollable">                                             
+                                <div class="step" v-for="(action) in filteredLogs" v-bind:key="action.index" v-on:click="applyAction(action.index)" v-bind:data-index="action.index"
+                                    v-bind:class="{ current: action.index === currentStep }">
+                                    {{action.index + 1}}.
+                                    <v-chip
+                                        class="ma-2"
+                                        label
+                                    >
+                                        {{action.action}}
+                                    </v-chip>
+                                    <code v-if="action.action === 'set'">
+                                        {{action.key}}={{action.value}}
+                                    </code>    
+                                    <code v-if="action.action !== 'set' && 'value' in action">
+                                        {{action.key}}{{'key' in action ? ': ' : ''}}{{action.value}}
+                                    </code>
+                                </div>                            
+                            </div>
+                        </v-card>                          
+                    </v-container>    
+                    
+                    <v-container>                    
+                        <v-card
+                        elevation="2"
+                        >
+                            <v-card-title>Problem Variables:</v-card-title>
+                            <v-card-text>
+                                <div v-for="(value, name) in problemData">
+                                {{name}}: {{value}}
+                                </div>
+                            </v-card-text>
+                        </v-card>     
+                    </v-container>  
+                    
+                    <v-container>                    
+                        <v-card
+                        elevation="2"
+                        >
+                            <v-card-title>Vertex Analysis</v-card-title>
+                            <v-card-text>
+                                <div>
+                                    * Results rendered only by the UI:
+                                </div>
+                                <v-simple-table dense>
+                                    <template v-slot:default>
+                                      <thead>
+                                        <tr>
+                                          <th class="text-left">
+                                            V
+                                          </th>
+                                          <th class="text-left">
+                                            dsatur(V)
+                                          </th>                                          
+                                          <th class="text-left">
+                                            d(V)
+                                          </th>                                       
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        <tr
+                                          v-for="(value, name) in adjList"
+                                          :key="name"
+                                          v-bind:class="{ current: problemData?.indice === name, visited: problemData?.ordenacao?.indexOf(name) < problemData?.i }"
+                                        >
+                                          <td>{{ name }}{{(isCandidate(name)) ? "*" : ""}}</td>
+                                          <td>{{ degreeOfSaturation[name] }}{{isMaxDSATURRestante(name) ? "*" : ""}}</td>                                          
+                                          <td>{{ value.length }}{{isMaxDegreeRestante(name) ? "*" : ""}}</td>
+                                        </tr>
+                                      </tbody>
+                                    </template>
+                                </v-simple-table>
+                                <div>Order of candidates: {{candidates}}</div>
+                                <div>Maximum Degree Remaining: {{grauMaximoRestante}}</div>
+                                <div>Maximum DSATUR Degree Remaining: {{maxDSATURRestante}}</div>
+                            </v-card-text>
+                        </v-card>     
+                    </v-container>                    
+                    
+                    <v-container>                    
+                        <v-card
+                        elevation="2"
+                        >
+                            <v-card-title>Available Colors:</v-card-title>
+                            <v-card-text>
+                                <div v-for="(value, name) in colors.slice(0, (problemData && problemData.k) ? problemData.k : 0)">
+                                {{name}}: <span class="color-preview" v-bind:style="{background: value}"></span>
+                                </div>
+                            </v-card-text>         
+                        </v-card>     
+                    </v-container>
+
+                    </div>
+                  </v-navigation-drawer>
+
+                <v-main>
+                    <div id="cy"></div>
+                    <div id="cy-backtracking"></div>                    
+                </v-main>
+            </v-app>
+        </div>
+    </body>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>    
+    <script src="./setup.js"></script>
+
+</html>
