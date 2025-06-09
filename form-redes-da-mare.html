@@ -1,0 +1,889 @@
+<html>
+
+<head>
+    <link rel="stylesheet" href="styles.css">
+    <title>Formulário de Solicitação - Redes da Maré</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-header {
+            margin-bottom: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+        }
+
+        .form-header h1 {
+            margin: 0;
+            color: #333;
+            font-size: 24px;
+        }
+
+        .form-row {
+            margin-bottom: 30px;
+        }
+
+        .form-row label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .form-row input[type="text"],
+        .form-row input[type="date"],
+        .form-row input[type="time"],
+        .form-row input[type="tel"],
+        .form-row input[type="number"],
+        .form-row select,
+        .form-row textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .form-row textarea {
+            min-height: 100px;
+        }
+
+        .form-row select {
+            height: 42px;
+        }
+
+        .form-row.two-columns {
+            display: flex;
+            gap: 20px;
+        }
+
+        .form-row.two-columns>div {
+            flex: 1;
+        }
+
+        .form-section {
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+            margin-top: 30px;
+        }
+
+        .form-section h2 {
+            margin-top: 0;
+            font-size: 20px;
+            color: #333;
+        }
+
+        button[type="submit"] {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        button[type="submit"]:hover {
+            background-color: #45a049;
+        }
+
+        .oculto {
+            display: none;
+        }
+
+        .radio-group {
+            margin-top: 10px;
+        }
+
+        .radio-group label {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 15px;
+            font-weight: normal;
+        }
+
+        .radio-group input[type="radio"] {
+            margin-right: 5px;
+        }
+
+        .data-automatica {
+            background-color: #f9f9f9;
+            color: #666;
+        }
+
+        .small-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0, 0, 0, 0.3);
+            border-radius: 50%;
+            border-top-color: #4CAF50;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .checkbox-group {
+            margin-top: 10px;
+        }
+
+        .checkbox-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: normal;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 5px;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        .opcional {
+            color: #888;
+            font-size: 12px;
+            font-weight: normal;
+            margin-left: 5px;
+        }
+
+        .condicional {
+            border-left: 3px solid #4CAF50;
+            padding-left: 15px;
+            margin-top: 10px;
+            background-color: #f9f9f9;
+        }
+
+        #btn-enviar[disabled] {
+            background-color: #ccc;
+            /* Gray background */
+            color: #666;
+            /* Dimmed text color */
+            cursor: not-allowed;
+            /* Show "not allowed" cursor */
+            opacity: 0.6;
+            /* Slight transparency */
+        }
+
+        #form-loaded {display: none}
+    </style>
+    <script>
+        (function () {
+
+            /* CONFIGURAÇÃO */
+            /* Este objeto contém os valores usados para configurações do formulário e da planilha */
+            const config = {
+                /* Url da planilha, obtida no Google Sheets no menu Arquivo > Compartilhar > Publicar na Web.
+                Lembre-se de escolher as opções "Documento Inteiro" e "Microsoft Excel (.xlsx)"
+                Também ative a opção "Republicar automaticamente quando houver alterações" */
+                URL_PLANILHA: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRaChtYNY9dE2qTTK9uVg3iqzHg4Pr0vaaxv7-5VCYYpSIItt1G6-Ey_5G_T4aVR1ok4xZ2ZCSHmG_J/pub?output=xlsx",
+
+                /* Pagina de dados gerais da planilha */
+                NOME_PAGINA_DADOS_GERAIS: 'Pedido geral',
+                PAGINA_DADOS_GERAIS_CABECALHO_DADOS_GERAIS: 'dados_gerais',
+
+                /* Pagina de eixos da planilha */
+                NOME_PAGINA_EIXOS: 'Eixos',
+                PAGINA_EIXOS_CABECALHO: 'Eixo ou Setor',
+
+                /* Pagina de projetos da planilha */
+                NOME_PAGINA_PROJETOS: 'Projetos',
+                PAGINA_PROJETOS_CABECALHO_PROJETO: 'Projeto',
+                PAGINA_PROJETOS_CABECALHO_EIXO: 'Eixo/Intereixo/Setor',
+
+                /* Pagina de tipos da planilha */
+                NOME_PAGINA_TIPOS_DE_DEMANDA: 'Tipo de demanda _1',
+
+                /* Pagina de perguntas da planilha */
+                NOME_PAGINA_PERGUNTAS_DEMANDA: 'Tipo de demanda_2',
+                PAGINA_PERGUNTAS_DEMANDA_CABECALHO_TIPO_DEMANDA: 'tipo_demanda',
+                PAGINA_PERGUNTAS_DEMANDA_CABECALHO_PERGUNTA: 'demanda_resposta',
+                PAGINA_PERGUNTAS_DEMANDA_CABECALHO_TIPO_RESPOSTA: 'tipo_dado',
+                PAGINA_PERGUNTAS_DEMANDA_CABECALHO_RESPOSTA_CONDICIONAL: 'condicional',
+                PAGINA_PERGUNTAS_DEMANDA_CABECALHO_RESPOSTA_OPCOES: 'opcoes',
+                PAGINA_PERGUNTAS_DEMANDA_CABECALHO_RESPOSTA_OBRIGATORIA: 'obrigatoria',
+
+                /* Mensagem exibida quando o carregamento da planilha falhar */
+                CARREGAMENTO_DA_PLANILHA_FALHOU: 'Não foi possível carregar ou interpretar o formulário. Pedimos desculpas pelo ocorrido',
+                CAMPO_NAO_RECONHECIDO: 'Campo não reconhecido',
+
+                CAMPO_TIPO_TEXT: 'text',
+                CAMPO_TIPO_SELECT: 'select',
+                CAMPO_TIPO_DATE: 'date',
+                CAMPO_TIPO_LINK: 'link',
+                CAMPO_TIPO_TEXTAREA: 'textarea',
+                CAMPO_TIPO_NUMBER: 'number',
+                CAMPO_TIPO_TIME: 'time',
+                CAMPO_TIPO_CHECKBOXES: 'checkboxes',
+                CAMPO_TIPO_ID: "id",
+                CAMPO_TIPO_EIXO: "eixo",
+                CAMPO_TIPO_PROJETO: "projeto",
+                CAMPO_TIPO_DEMANDA: "demanda",
+                CAMPO_TIPO_PHONE_NUMBER: 'phone_number',
+                CAMPO_TIPO_ATTACH: 'attach',
+                CAMPO_TIPO_EMAIL_SENT_CONFIRMATION: "email_sent_confirmation",
+
+                SEPARADOR_DE_OPCOES: '/',
+
+                CAMPO_OPCAO_AUTOMATICO: 'automatico',
+
+                /* Mensagem placeholder padrão para o select de projetos */
+                SELECT_PROJETOS_PLACEHOLDER: `Selecione um eixo primeiramente`,
+                SELECT_OPTION: 'Selecione uma opção',
+
+                ELEMENTO_SELECT_PROJETOS_ID: "project",
+                ELEMENTO_SELECT_DEMANDA_ID: "demanda",
+                CLASSE_DE_CAMPO_DO_FORMULARIO: "form-row",
+                ID_FORM: 'formulario-mare',
+                ID_FORM_INICIAL: 'form-initial',
+                ID_PERGUNTAS_DINAMICAS: 'perguntas-dinamicas',
+                ID_SECAO_PERGUNTAS_DINAMICAS: 'secao-perguntas-dinamicas',
+                ID_MENSAGEM_SUCESSO: 'mensagem-sucesso',
+                ID_NOVO_PEDIDO: 'novo-pedido',
+                ID_CHECKBOX_WRAPPER: 'checkbox-wrapper',
+                ID_SELECT_EIXO: 'eixo',
+
+                PROBLEMA_ENVIAR_FORMULARIO: "Houve um problema ao enviar seu pedido. Por favor, tente novamente.",
+                ERRO_CONEXAO: "Erro de conexão. Por favor, tente novamente mais tarde.",
+                INVALID_FORM: 'Alguns dados no formulário estão inválidos.\n\n Por favor, verifique que o endereço de email é válido e que todos os campos obrigatórios foram preenchidos'
+            };
+
+
+            /* CÓDIGO DA APLICAÇÃO COMEÇA AQUI */
+            /* Esta função carrega a planilha do google sheets e retorna o valor em JSON */
+            async function carregarPlanilhaEmJSON() {
+                const sheetUrl = config.URL_PLANILHA;
+                try {
+                    const response = await fetch(sheetUrl);
+                    const arrayBuffer = await response.arrayBuffer();
+
+                    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+
+                    const result = {};
+
+                    workbook.SheetNames.forEach(sheetName => {
+                        const sheet = workbook.Sheets[sheetName];
+                        const data = XLSX.utils.sheet_to_json(sheet, { defval: null }); /* defval mantém as células vazias como nulo */
+                        result[sheetName] = data;
+                    });
+
+                    return result;
+
+                } catch (error) {
+                    console.error(config.CARREGAMENTO_DA_PLANILHA_FALHOU, error);
+                    alert(config.CARREGAMENTO_DA_PLANILHA_FALHOU);
+                }
+            }
+
+            /* Obtem o tipo do campo.
+            Essa funcao também emite um erro caso o tipo declarado na planilha não seja suportado */
+            function obterTipoDoCampo(item) {
+                const tipo = item[config.PAGINA_PERGUNTAS_DEMANDA_CABECALHO_TIPO_RESPOSTA];
+                switch (tipo) {
+                    case config.CAMPO_TIPO_TEXT:
+                    case config.CAMPO_TIPO_SELECT:
+                    case config.CAMPO_TIPO_DATE:
+                    case config.CAMPO_TIPO_LINK:
+                    case config.CAMPO_TIPO_NUMBER:
+                    case config.CAMPO_TIPO_TIME:
+                    case config.CAMPO_TIPO_CHECKBOXES:
+                    case config.CAMPO_TIPO_ID:
+                    case config.CAMPO_TIPO_EIXO:
+                    case config.CAMPO_TIPO_PROJETO:
+                    case config.CAMPO_TIPO_DEMANDA:
+                    case config.CAMPO_TIPO_EMAIL_SENT_CONFIRMATION:
+                    case config.CAMPO_TIPO_PHONE_NUMBER:
+                    case config.CAMPO_TIPO_ATTACH:
+                        return tipo;
+                    default:
+                        throw new Error(`O tipo ${tipo} nao é suportado pelo formulário`);
+                }
+            }
+
+            /* Obtem as opcoes do campo. Caso não existam, será nulo, ou então um array */
+            function obterOpcoesDoCampo(item) {
+                const opcao = item[config.PAGINA_PERGUNTAS_DEMANDA_CABECALHO_RESPOSTA_OPCOES];
+                switch (opcao) {
+                    case "":
+                    case null:
+                    case undefined:
+                        return null;
+                    default:
+                        return opcao.split(config.SEPARADOR_DE_OPCOES).map(s => s.trim());
+                }
+            }
+
+            /* Retorna a lista de eixos em array de objetos */
+            function obterPaginaDeEixos(result) {
+                return result[config.NOME_PAGINA_EIXOS];
+            }
+
+            /* Retorna a lista de projetos em array de objetos */
+            function obterPaginaDeProjetos(result) {
+                return result[config.NOME_PAGINA_PROJETOS];
+            }
+
+            /* Retorna a lista de campos para perguntas de demanda */
+            function obterCamposParaPerguntasDeDemanda(result, item) {
+                return result[config.NOME_PAGINA_PERGUNTAS_DEMANDA]
+                    .filter(value => {
+                        return value[config.PAGINA_PERGUNTAS_DEMANDA_CABECALHO_TIPO_DEMANDA] === item.Pedido
+                    })
+                    .map(validItem => ({
+                        label: validItem[config.PAGINA_PERGUNTAS_DEMANDA_CABECALHO_PERGUNTA],
+                        /* Remove caracteres speciais do texto para gerar o nome */
+                        name: validItem[config.PAGINA_PERGUNTAS_DEMANDA_CABECALHO_PERGUNTA].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_'),
+                        type: obterTipoDoCampo(validItem),
+                        options: obterOpcoesDoCampo(validItem),
+                        required: validItem[config.PAGINA_PERGUNTAS_DEMANDA_CABECALHO_RESPOSTA_CONDICIONAL] === config.PAGINA_PERGUNTAS_DEMANDA_CABECALHO_RESPOSTA_OBRIGATORIA
+                    }));
+            }
+
+            /* Remove todos os projetos e deixa apenas a opção inicial de placeholder */
+            function resetarElementoSelectDeProjetos(selectProject) {
+                selectProject.setAttribute('disabled', true);
+                selectProject.innerHTML = ``;
+                const defaultOption = document.createElement('option');
+                defaultOption.value = ``;
+                defaultOption.innerHTML = config.SELECT_PROJETOS_PLACEHOLDER;
+                selectProject.appendChild(defaultOption);
+            }
+
+            function atualizarElementoSelectDeProjetos(result, eixo) {
+
+                const selectProject = document.getElementById(config.ELEMENTO_SELECT_PROJETOS_ID);
+
+                if (!eixo) {
+                    resetarElementoSelectDeProjetos(selectProject);
+                    return;
+                }
+
+                /* Reativar o select */
+                selectProject.removeAttribute('disabled');
+
+                /* Resetar as escolhas */
+                selectProject.innerHTML = ``;
+
+                const projetos = obterPaginaDeProjetos(result);
+
+                /* Filtrar apenas projetos do eixo escolhido */
+                const projetosFiltrados = projetos.filter(p => {
+                    return (
+                        p[config.PAGINA_PROJETOS_CABECALHO_EIXO] === eixo
+                    ) || (
+                            !p[config.PAGINA_PROJETOS_CABECALHO_EIXO]
+                        )
+                });
+
+                for (let projeto of projetosFiltrados) {
+                    const option = document.createElement('option');
+                    option.value = projeto[config.PAGINA_PROJETOS_CABECALHO_PROJETO];
+                    option.innerHTML = projeto[config.PAGINA_PROJETOS_CABECALHO_PROJETO];
+                    selectProject.appendChild(option);
+                }
+            }
+
+            /* Obtém os campos iniciais do formulário */
+            function obterCamposIniciais(result) {
+                return (
+                    result[config.NOME_PAGINA_DADOS_GERAIS]
+                        .map(validItem => {
+                            const textoDoItem = validItem[config.PAGINA_DADOS_GERAIS_CABECALHO_DADOS_GERAIS];
+                            return {
+                                label: textoDoItem,
+                                /* Remove caracteres speciais do texto para gerar o nome */
+                                name: textoDoItem.toLowerCase().replace(/[^a-zA-Z0-9]/g, '_'),
+                                type: obterTipoDoCampo(validItem),
+                                options: obterOpcoesDoCampo(validItem),
+                                required: validItem[config.PAGINA_PERGUNTAS_DEMANDA_CABECALHO_RESPOSTA_CONDICIONAL] === config.PAGINA_PERGUNTAS_DEMANDA_CABECALHO_RESPOSTA_OBRIGATORIA
+                            }
+                        })
+                )
+            }
+
+            /* Carrega os campos iniciais no formulário */
+            function carregarCamposIniciais(result) {
+                const fields = obterCamposIniciais(result);
+                const target = document.getElementById(config.ID_FORM_INICIAL);
+                fields.forEach(field => {
+                    const formRow = criarCampoNoFormulario(field, result);
+                    target.appendChild(formRow);
+                })
+            }
+
+            /* Retorna se um campo deve ser exibido no formulário.
+            Alguns campos como id, data e confirmação de envio não devem ser exibidos */
+            function campoDeveSerExibido(campo) {
+                return !(
+                    (campo.options && campo.options.includes(config.CAMPO_OPCAO_AUTOMATICO))
+                    ||
+                    (campo.type === config.CAMPO_TIPO_EMAIL_SENT_CONFIRMATION)
+                );
+            }
+
+            function criarLabelParaCampo(campo) {
+                const label = document.createElement('label');
+                label.setAttribute('for', campo.name);
+                label.textContent = campo.label;
+                if (campo.required) {
+                    label.textContent += ` *`;
+                }
+                return label;
+            }
+
+            function criarCampoTipoCheckboxes(campo, formRow) {
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = campo.name;
+                hiddenInput.id = campo.name;
+                if (campo.required) {
+                    hiddenInput.required = true;
+                }
+                formRow.appendChild(hiddenInput);
+
+                campo.options.forEach(opcao => {
+                    const checkboxWrapper = document.createElement('div');
+                    checkboxWrapper.className = config.ID_CHECKBOX_WRAPPER;
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.name = campo.name + "_checkbox";
+                    checkbox.value = opcao;
+                    checkbox.addEventListener('change', function () {
+                        const selected = Array.from(formRow.querySelectorAll('input[type=checkbox]:checked'))
+                            .map(cb => cb.value)
+                            .join(', ');
+                        hiddenInput.value = selected;
+                    });
+
+                    const checkboxLabel = document.createElement('label');
+                    checkboxLabel.textContent = opcao;
+                    checkboxLabel.prepend(checkbox);
+
+                    checkboxWrapper.appendChild(checkboxLabel);
+                    formRow.appendChild(checkboxWrapper);
+                });
+            }
+
+            function criarCampoTipoSelect(campo, formRow, result) {
+                const select = document.createElement('select');
+                select.setAttribute('name', campo.name);
+                select.setAttribute('id', campo.name);
+                if (campo.required) {
+                    select.required = true;
+                }
+
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = config.SELECT_OPTION;
+                select.appendChild(defaultOption);
+
+                campo.options.forEach(opcao => {
+                    const option = document.createElement('option');
+                    option.value = opcao;
+                    option.textContent = opcao;
+                    select.appendChild(option);
+                });
+                formRow.appendChild(select);
+            }
+
+            function criarCampoTipoEixo(campo, formRow, result) {
+                const selectEixo = document.createElement('select');
+                selectEixo.setAttribute('id', config.ID_SELECT_EIXO);
+                selectEixo.setAttribute('name', config.ID_SELECT_EIXO);
+
+                if (campo.required) {
+                    selectEixo.required = true;
+                }
+
+                selectEixo.addEventListener('change', (e) => {
+                    /* Atualiza o select de projetos baseado no eixo selecionado */
+                    atualizarElementoSelectDeProjetos(result, e.target.value);
+                })
+
+                const defaultOption = document.createElement('option');
+                defaultOption.value = ``;
+                defaultOption.innerHTML = `Selecione um eixo`;
+                selectEixo.appendChild(defaultOption);
+
+                const eixos = obterPaginaDeEixos(result);
+
+                for (let eixo of eixos) {
+                    const option = document.createElement('option');
+                    option.value = eixo[config.PAGINA_EIXOS_CABECALHO];
+                    option.innerHTML = eixo[config.PAGINA_EIXOS_CABECALHO];
+                    selectEixo.appendChild(option);
+                }
+
+                formRow.appendChild(selectEixo);
+            }
+
+            function criarCampoTipoProjeto(campo, formRow) {
+                const selectProject = document.createElement('select');
+                selectProject.setAttribute('id', config.ELEMENTO_SELECT_PROJETOS_ID);
+                selectProject.setAttribute('name', config.ELEMENTO_SELECT_PROJETOS_ID);
+
+                if (campo.required) {
+                    selectProject.required = true;
+                }
+
+                formRow.appendChild(selectProject);
+                resetarElementoSelectDeProjetos(selectProject);
+            }
+
+            function criarCampoTipoDemanda(campo, formRow) {
+                const selectDemanda = document.createElement('select');
+                selectDemanda.setAttribute('id', config.ELEMENTO_SELECT_DEMANDA_ID);
+                selectDemanda.setAttribute('name', config.ELEMENTO_SELECT_DEMANDA_ID);
+
+                if (campo.required) {
+                    selectDemanda.required = true;
+                }
+
+                formRow.appendChild(selectDemanda);
+            }
+
+            function criarCampoTipoDate(campo, formRow) {
+                const input = document.createElement('input');
+                input.type = 'date';
+                input.name = campo.name;
+                input.id = campo.name;
+                if (campo.required) {
+                    input.required = true;
+                }
+
+                if (campo.options && campo.options.includes(config.CAMPO_OPCAO_AUTOMATICO)) {
+                    input.hidden = true;
+                    input.value = (new Date()).toISOString().split('T')[0];
+                }
+                formRow.appendChild(input);
+            }
+
+            function criarCampoTipoTime(campo, formRow) {
+                const input = document.createElement('input');
+                input.type = 'time';
+                input.name = campo.name;
+                input.id = campo.name;
+                if (campo.required) {
+                    input.required = true;
+                }
+                formRow.appendChild(input);
+            }
+
+            function criarCampoTipoTextarea(campo, formRow) {
+                const textarea = document.createElement('textarea');
+                textarea.name = campo.name;
+                textarea.id = campo.name;
+                if (campo.required) {
+                    textarea.required = true;
+                }
+                formRow.appendChild(textarea);
+            }
+
+            function criarCampoTipoText(campo, formRow) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.name = campo.name;
+                input.id = campo.name;
+                if (campo.required) {
+                    input.required = true;
+                }
+                formRow.appendChild(input);
+            }
+
+            function criarCampoTipoPhoneNumber(campo, formRow) {
+                const input = document.createElement('input');
+                input.type = 'tel';
+                input.name = campo.name;
+                input.id = campo.name;
+                if (campo.required) {
+                    input.required = true;
+                }
+                formRow.appendChild(input);
+            }
+
+            function criarCampoTipoNumber(campo, formRow) {
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.name = campo.name;
+                input.id = campo.name;
+                if (campo.required) {
+                    input.required = true;
+                }
+                formRow.appendChild(input);
+            }
+
+            function criarCampoTipoAttach(campo, formRow) {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.name = campo.name;
+                input.id = campo.name;
+                if (campo.required) {
+                    input.required = true;
+                }
+                formRow.appendChild(input);
+            }
+
+            function criarCampoTipoLink(campo, formRow) {
+                const a = document.createElement('a');
+                a.href = campo.options.join(config.SEPARADOR_DE_OPCOES);
+                a.target = `_blank`;
+                a.innerHTML = ` Link`;
+                formRow.appendChild(a);
+            }
+
+            /* Cria um novo elemento para ser adicionado ao formulário */
+            function criarCampoNoFormulario(campo, result) {
+                const formRow = document.createElement('div');
+                formRow.className = config.CLASSE_DE_CAMPO_DO_FORMULARIO;
+
+                if (campoDeveSerExibido(campo)) {
+                    const label = criarLabelParaCampo(campo);
+                    formRow.appendChild(label);
+                }
+
+                if ((campo.type === config.CAMPO_TIPO_CHECKBOXES) && campo.options) {
+                    criarCampoTipoCheckboxes(campo, formRow);
+                }
+
+                else if ((campo.type === config.CAMPO_TIPO_SELECT) && campo.options) {
+                    criarCampoTipoSelect(campo, formRow);
+                }
+                else if (campo.type === config.CAMPO_TIPO_EIXO) {
+                    criarCampoTipoEixo(campo, formRow, result);
+                }
+                else if (campo.type === config.CAMPO_TIPO_PROJETO) {
+                    criarCampoTipoProjeto(campo, formRow);
+                }
+                else if (campo.type === config.CAMPO_TIPO_DEMANDA) {
+                    criarCampoTipoDemanda(campo, formRow);
+                }
+                else if (campo.type === config.CAMPO_TIPO_DATE) {
+                    criarCampoTipoDate(campo, formRow);
+                }
+                else if (campo.type === config.CAMPO_TIPO_TIME) {
+                    criarCampoTipoTime(campo, formRow);
+                }
+                else if (campo.type === config.CAMPO_TIPO_TEXTAREA) {
+                    criarCampoTipoTextarea(campo, formRow);
+                }
+                else if (campo.type === config.CAMPO_TIPO_TEXT) {
+                    criarCampoTipoText(campo, formRow);
+                }
+                else if (campo.type === config.CAMPO_TIPO_LINK) {
+                    criarCampoTipoLink(campo, formRow);
+                }
+                else if (campo.type === config.CAMPO_TIPO_PHONE_NUMBER) {
+                    criarCampoTipoPhoneNumber(campo, formRow);
+                }
+                else if (campo.type === config.CAMPO_TIPO_NUMBER) {
+                    criarCampoTipoNumber(campo, formRow);
+                }
+                else if (campo.type === config.CAMPO_TIPO_ID) {
+                    /* Desnecessário, pois o formspree já contém um campo de id */
+                }
+                else if (campo.type === config.CAMPO_TIPO_EMAIL_SENT_CONFIRMATION) {
+                    /* Desnecessário pois não é um campo, e sim uma mensagem de confirmação */
+                }
+                else if (campo.type === config.CAMPO_TIPO_ATTACH) {
+                    criarCampoTipoAttach(campo, formRow);
+                }
+                else {
+                    console.log(campo);
+                    throw new Error(config.CAMPO_NAO_RECONHECIDO);
+                }
+
+                return formRow;
+            }
+
+            function obterHTMLDemandasNaoSelecionadas() {
+                return `<div class="${config.CLASSE_DE_CAMPO_DO_FORMULARIO}"><p>Selecione um tipo de demanda para visualizar as perguntas específicas.</p></div>`
+            }
+
+            function registrarCallbackDeSubmissaoDoFormulario() {
+                const form = document.getElementById(config.ID_FORM);
+                const mensagemSucesso = document.getElementById(config.ID_MENSAGEM_SUCESSO);
+                const botaoNovoPedido = document.getElementById(config.ID_NOVO_PEDIDO);
+
+                form.addEventListener("submit", async function (event) {
+                    event.preventDefault();
+
+                    if (!form.checkValidity()) {
+                        e.preventDefault(); // Stop form submission
+                        form.reportValidity(); // Show browser validation messages
+                        alert(config.INVALID_FORM);
+                    }
+
+                    const botaoEnviar = document.getElementById('btn-enviar');
+                    botaoEnviar.setAttribute('disabled', '');
+
+                    const formData = new FormData(form);
+                    const action = form.getAttribute("action");
+
+                    try {
+                        const response = await fetch(action, {
+                            method: "POST",
+                            body: formData,
+                            headers: { 'Accept': 'application/json' }
+                        });
+
+                        if (response.ok) {
+                            mensagemSucesso.style.display = "block";
+                        } else {
+                            alert(config.PROBLEMA_ENVIAR_FORMULARIO + `\n` + await response.text());
+                        }
+                    } catch (error) {
+                        alert(config.ERRO_CONEXAO);
+                    } finally {
+                        botaoEnviar.removeAttribute('disabled');
+                    }
+                });
+
+                botaoNovoPedido.addEventListener("click", function () {
+                    mensagemSucesso.style.display = "none";
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    location.reload();
+                });
+            };
+
+            document.addEventListener('DOMContentLoaded', async function () {
+
+                registrarCallbackDeSubmissaoDoFormulario();
+
+                const containerPerguntas = document.getElementById(config.ID_PERGUNTAS_DINAMICAS);
+
+                const result = await carregarPlanilhaEmJSON();
+
+                document.getElementById('loading-form').style.display = `none`;
+                document.getElementById('form-loaded').style.display = `block`;
+
+                carregarCamposIniciais(result);
+
+                const tipoDemanda = document.getElementById(config.ELEMENTO_SELECT_DEMANDA_ID);
+
+                const camposPorDemandaPares = result[config.NOME_PAGINA_TIPOS_DE_DEMANDA].map(item => [
+                    item.Pedido,
+                    obterCamposParaPerguntasDeDemanda(result, item)
+                ]);
+
+                const camposPorDemanda = Object.fromEntries(camposPorDemandaPares);
+
+                tipoDemanda.innerHTML = `<option value="">Selecione o tipo de demanda</option>`;
+
+                camposPorDemandaPares.forEach(pair => {
+                    tipoDemanda.innerHTML += `<option value="${pair[0]}">${pair[0]}</option>`;
+                });
+
+                tipoDemanda.addEventListener('change', function () {
+                    const tipoSelecionado = tipoDemanda.value;
+                    containerPerguntas.innerHTML = '';
+
+                    if (camposPorDemanda[tipoSelecionado]) {
+                        camposPorDemanda[tipoSelecionado].forEach((campo) => {
+                            const formRow = criarCampoNoFormulario(campo, result);
+                            containerPerguntas.appendChild(formRow);
+                        });
+                    } else {
+                        containerPerguntas.innerHTML = obterHTMLDemandasNaoSelecionadas();
+                    }
+                });
+            });
+
+        })()
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
+        integrity="sha512-r22gChDnGvBylk90+2e/ycr3RVrDi8DIOkIGNhJlKfuyQM4tIRAI062MaV8sfjQKYVGjOBaZBOA87z+IhZE9DA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="form-header">
+            <h1>Formulário de Solicitação - Redes da Maré</h1>
+        </div>
+
+        <form action="https://formspree.io/f/xgvyejrz" method="POST" id="formulario-mare">
+
+            <div id="loading-form">
+                Carregando formulário, por favor aguarde...
+            </div>
+
+            <div id="form-loaded">
+
+                <div class="form-section">
+                    <h2>Dados gerais</h2>
+
+                    <div id="form-initial">
+
+                    </div>
+
+                    <div class="form-section" id="secao-perguntas-dinamicas">
+                        <h2>Informações específicas</h2>
+                        <div id="perguntas-dinamicas">
+                            <div class="form-row">
+                                <p>Selecione um tipo de demanda para visualizar as perguntas específicas.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="btn-enviar" type="submit">Enviar</button>
+
+                </div>
+
+                <br />
+
+                <!-- Mensagem de sucesso -->
+                <div id="mensagem-sucesso"
+                    style="display: none; padding: 15px; margin-bottom: 20px; border: 1px solid #4CAF50; background-color: #DFF2BF; color: #4F8A10; border-radius: 5px; font-size: 16px;">
+                    <p><strong>Pedido enviado com sucesso!</strong><br>Aguarde que entraremos em contato em breve para
+                        dar
+                        uma previsão de entrega.</p>
+                    <button id="novo-pedido" type="button"
+                        style="margin-top: 10px; padding: 8px 15px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        Fazer novo pedido
+                    </button>
+                </div>
+
+            </div>
+
+        </form>
+    </div>
+
+
+</body>
+
+</html>
