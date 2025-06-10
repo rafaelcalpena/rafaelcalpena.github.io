@@ -293,6 +293,10 @@
         .outer-container {
             padding: 0 8px;
         }
+
+        .logo {
+            max-width: 100%;
+        }
     </style>
     <script>
         (function () {
@@ -749,6 +753,14 @@
                     input.required = true;
                 }
                 formRow.appendChild(input);
+                /* Também criar input tipo text se estiver na opção */
+                if (campo.options && campo.options.includes('text')) {
+                    const textInput = document.createElement('input');
+                    textInput.type = 'text';
+                    textInput.name = campo.name + `_text`;
+                    textInput.id = campo.name + `_text`;
+                    formRow.appendChild(textInput);
+                }
             }
 
             function criarCampoTipoLink(campo, formRow) {
