@@ -752,6 +752,9 @@
                 if (campo.required) {
                     input.required = true;
                 }
+                if (campo.options && campo.options.includes('multiple')) {
+                    input.multiple = true;
+                }
                 formRow.appendChild(input);
                 /* Também criar input tipo text se estiver na opção */
                 if (campo.options && campo.options.includes('text')) {
@@ -952,7 +955,7 @@
             <h1>Formulário de Solicitação</h1>
 
 
-            <form action="https://formspree.io/f/xgvyejrz" method="POST" id="formulario-mare">
+            <form action="https://formspree.io/f/xgvyejrz" method="POST" id="formulario-mare" enctype="multipart/form-data">
 
                 <div id="loading-form">
                     Carregando formulário, por favor aguarde...
